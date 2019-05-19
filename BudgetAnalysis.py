@@ -2,9 +2,13 @@
 #!/usr/bin/python3
 
 from PyQt5.QtWidgets import QMainWindow, QApplication, QTableWidget, QTableWidgetItem, QWidget, QTabWidget, QSizePolicy, QHBoxLayout, QPushButton
-from PyQt5.QtCore import pyqtSlot, QObject, Qt
+from PyQt5.QtCore import pyqtSlot, QObject, Qt, pyqtSignal
 import sys
 import qdarkstyle
+
+
+NEGATIVE = -1
+POSITIVE = 1
 
 
 class TableItem:
@@ -23,13 +27,17 @@ class TableItem:
 
 class SectionWidget(QWidget):
 
-    def __init__(self, defaults: []) -> None:
+    def __init__(self, defaults: [], state: int) -> None:
         """
         This class will contain the layout for each of the customizeable tabs
         The tabs will be sections that detail an area of personal finance. The
         user can change the values by adding their own too.
         """
         super().__init__()
+
+        self._state = state if state == POSITIVE or state == NEGATIVE else NEGATIVE
+        self.total = 0.0
+        self.total_changed = pyqtSignal()
 
         layout = QHBoxLayout()
 
@@ -81,6 +89,20 @@ class SectionWidget(QWidget):
             elif item.column() == 1:
                 self._custom[item.row() - len(self._defaults)].amount = converted
 
+        self._set_total()
+
+    def _set_total(self) -> None:
+        """
+        Get the total for all of the items in this list
+        :return: none
+        """
+        total = 0.0
+        for i in range(self._table.rowCount()):
+            total += float(self._table.item(i, 1).text()) if self._table.item(i, 1) else 0.0
+
+        self.total = total
+        self.total_changed.emit()
+
     def _set_table(self) -> None:
         """
         Remove any items from the layout that were already there. Then recreate the entire table and
@@ -114,6 +136,8 @@ class SectionWidget(QWidget):
         self._table.resizeColumnsToContents()
         self._resize_columns()
         self._add_buttons()
+
+        self._set_total()
 
     def _resize_columns(self) -> None:
         """
@@ -172,6 +196,7 @@ class SectionWidget(QWidget):
             self._table.removeRow(row)
 
         self._selected = []
+        self._set_total()
 
     @pyqtSlot()
     def _save_selection(self) -> None:
@@ -226,7 +251,7 @@ class MainWindow(QMainWindow):
             TableItem("Hobbies"),
             TableItem("Children's Activities")
         ]
-        self._living_expenses = SectionWidget(living_expenses)
+        self._living_expenses = SectionWidget(living_expenses, NEGATIVE)
 
         insurance = [
             TableItem("Auto Insurance"),
@@ -239,7 +264,7 @@ class MainWindow(QMainWindow):
             TableItem("Flexible Spending Account"),
             TableItem("Liability Coverage")
         ]
-        self._insurance = SectionWidget(insurance)
+        self._insurance = SectionWidget(insurance, NEGATIVE)
 
         savings_investments = [
             TableItem("Savings"),
@@ -250,7 +275,7 @@ class MainWindow(QMainWindow):
             TableItem("SEP/SIMPLE"),
             TableItem("Thrift Savings")
         ]
-        self._savings_investment = SectionWidget(savings_investments)
+        self._savings_investment = SectionWidget(savings_investments, NEGATIVE)
 
         consumer_debt = [
             TableItem("Advance Pay"),
@@ -259,9 +284,20 @@ class MainWindow(QMainWindow):
             TableItem("Student Loan(s)"),
             TableItem("Personal Loan(s)")
         ]
-        self._consumer_debt = SectionWidget(consumer_debt)
+        self._consumer_debt = SectionWidget(consumer_debt, NEGATIVE)
 
         gross_income = [
+            TableItem("Monthly Income"),
+            TableItem("Monthly Income (Spouse)")
+        ]
+        self._gross_income = SectionWidget(gross_income, POSITIVE)
+
+        other_net_income = [
+            TableItem("Rental Income"),
+            TableItem("Retirement Income"),
+            TableItem("Child Support"),
+            TableItem("Disability"),
+            TableItem("Investment Income"),
             TableItem("Federal Taxes"),
             TableItem("State/Local Taxes"),
             TableItem("Social Security/Payroll"),
@@ -269,16 +305,7 @@ class MainWindow(QMainWindow):
             TableItem("State/Local Taxes (Spouse)"),
             TableItem("Social Security/Payroll (Spouse)")
         ]
-        self._gross_income = SectionWidget(gross_income)
-
-        other_net_income = [
-            TableItem("Rental Income"),
-            TableItem("Retirement Income"),
-            TableItem("Child Support"),
-            TableItem("Disability"),
-            TableItem("Investment Income")
-        ]
-        self._other_net_income = SectionWidget(other_net_income)
+        self._other_net_income = SectionWidget(other_net_income, POSITIVE)
 
 
         # Add tabs to the main window
