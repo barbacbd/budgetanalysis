@@ -25,9 +25,53 @@ class TableItem:
         self.amount = amount
 
 
+class SectionTotal(QObject):
+    total = 0.0
+    total_changed = pyqtSignal(str, float)
+
+
+class TotalTab(QWidget):
+
+    def __init__(self) -> None:
+        """
+
+        """
+        super().__init__()
+        self._sections = {}
+
+        layout = QHBoxLayout()
+
+        self._table = QTableWidget()
+        """ Only allow title and amount columns for now """
+        self._table.setColumnCount(2)
+        """ Expand to fit the layout """
+        self._table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+    def add_section(self, title: str) -> None:
+        """
+        Add the title if it is not already in the list - when adding here we will have a total value of 0.0
+        :param title: name of section we wish to add
+        :return: None
+        """
+
+        if self._sections.get(title) is None:
+            self._sections[title] = 0.0
+
+    def update(self, title: str, total: float) -> None:
+        """
+        Update the total value for this section if it exists
+        :param title: name of the section to find
+        :param total: value of the total for the section
+        :return: None
+        """
+        if self._sections.get(title) is not None:
+            self._sections[title] = total
+            print("{} = {}".format(title, total))
+
+
 class SectionWidget(QWidget):
 
-    def __init__(self, defaults: [], state: int) -> None:
+    def __init__(self, title: str, defaults: [], state: int) -> None:
         """
         This class will contain the layout for each of the customizeable tabs
         The tabs will be sections that detail an area of personal finance. The
@@ -35,9 +79,11 @@ class SectionWidget(QWidget):
         """
         super().__init__()
 
+        self.title = title
+
         self._state = state if state == POSITIVE or state == NEGATIVE else NEGATIVE
         self.total = 0.0
-        self.total_changed = pyqtSignal()
+        self.total = SectionTotal()
 
         layout = QHBoxLayout()
 
@@ -100,8 +146,8 @@ class SectionWidget(QWidget):
         for i in range(self._table.rowCount()):
             total += float(self._table.item(i, 1).text()) if self._table.item(i, 1) else 0.0
 
-        self.total = total
-        self.total_changed.emit()
+        self.total.total = total
+        self.total.total_changed.emit(self.title, self.total.total)
 
     def _set_table(self) -> None:
         """
@@ -251,7 +297,7 @@ class MainWindow(QMainWindow):
             TableItem("Hobbies"),
             TableItem("Children's Activities")
         ]
-        self._living_expenses = SectionWidget(living_expenses, NEGATIVE)
+        self._living_expenses = SectionWidget("Living Expenses", living_expenses, NEGATIVE)
 
         insurance = [
             TableItem("Auto Insurance"),
@@ -264,7 +310,7 @@ class MainWindow(QMainWindow):
             TableItem("Flexible Spending Account"),
             TableItem("Liability Coverage")
         ]
-        self._insurance = SectionWidget(insurance, NEGATIVE)
+        self._insurance = SectionWidget("Insurance", insurance, NEGATIVE)
 
         savings_investments = [
             TableItem("Savings"),
@@ -275,7 +321,7 @@ class MainWindow(QMainWindow):
             TableItem("SEP/SIMPLE"),
             TableItem("Thrift Savings")
         ]
-        self._savings_investment = SectionWidget(savings_investments, NEGATIVE)
+        self._savings_investment = SectionWidget("Savings Investments", savings_investments, NEGATIVE)
 
         consumer_debt = [
             TableItem("Advance Pay"),
@@ -284,13 +330,13 @@ class MainWindow(QMainWindow):
             TableItem("Student Loan(s)"),
             TableItem("Personal Loan(s)")
         ]
-        self._consumer_debt = SectionWidget(consumer_debt, NEGATIVE)
+        self._consumer_debt = SectionWidget("Consumer Debt", consumer_debt, NEGATIVE)
 
         gross_income = [
             TableItem("Monthly Income"),
             TableItem("Monthly Income (Spouse)")
         ]
-        self._gross_income = SectionWidget(gross_income, POSITIVE)
+        self._gross_income = SectionWidget("Gross Income", gross_income, POSITIVE)
 
         other_net_income = [
             TableItem("Rental Income"),
@@ -305,20 +351,44 @@ class MainWindow(QMainWindow):
             TableItem("State/Local Taxes (Spouse)"),
             TableItem("Social Security/Payroll (Spouse)")
         ]
-        self._other_net_income = SectionWidget(other_net_income, POSITIVE)
+        self._other_net_income = SectionWidget("Other Net Income", other_net_income, POSITIVE)
 
+        self._total_tab = TotalTab()
+        self._total_tab.add_section(self._living_expenses.title)
+        self._total_tab.add_section(self._insurance.title)
+        self._total_tab.add_section(self._savings_investment.title)
+        self._total_tab.add_section(self._consumer_debt.title)
+        self._total_tab.add_section(self._gross_income.title)
+        self._total_tab.add_section(self._other_net_income.title)
+
+        self._living_expenses.total.total_changed.connect(self.update)
+        self._insurance.total.total_changed.connect(self.update)
+        self._savings_investment.total.total_changed.connect(self.update)
+        self._consumer_debt.total.total_changed.connect(self.update)
+        self._gross_income.total.total_changed.connect(self.update)
+        self._other_net_income.total.total_changed.connect(self.update)
 
         # Add tabs to the main window
-        self._tabs.addTab(self._living_expenses, "Living Expenses")
-        self._tabs.addTab(self._insurance, "Insurance")
-        self._tabs.addTab(self._savings_investment, "Savings & Investment")
-        self._tabs.addTab(self._consumer_debt, "Consumer Debt")
-        self._tabs.addTab(self._gross_income, "Gross Income")
-        self._tabs.addTab(self._other_net_income, "Other Income")
+        self._tabs.addTab(self._living_expenses, self._living_expenses.title)
+        self._tabs.addTab(self._insurance, self._insurance.title)
+        self._tabs.addTab(self._savings_investment, self._savings_investment.title)
+        self._tabs.addTab(self._consumer_debt, self._consumer_debt.title)
+        self._tabs.addTab(self._gross_income, self._gross_income.title)
+        self._tabs.addTab(self._other_net_income, self._other_net_income.title)
+        self._tabs.addTab(self._total_tab, "Total")
 
         # set the central widget to be the tabs widget
         self.setCentralWidget(self._tabs)
 
+    def update(self, title: str, total: float) -> None:
+        """
+
+        :param title:
+        :param total:
+        :return:
+        """
+        if self._total_tab is not None:
+            self._total_tab.update(title, total)
 
 if __name__ == '__main__':
     dark_stylesheet = qdarkstyle.load_stylesheet_pyqt5()
