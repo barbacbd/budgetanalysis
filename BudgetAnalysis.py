@@ -47,6 +47,13 @@ class TotalTab(QWidget):
         """ Expand to fit the layout """
         self._table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
+        layout.addWidget(self._table)
+
+        """ Create the table and fill in all of the data including the custom and default values """
+        self._set_table()
+
+        self.setLayout(layout)
+
     def add_section(self, title: str) -> None:
         """
         Add the title if it is not already in the list - when adding here we will have a total value of 0.0
@@ -67,6 +74,45 @@ class TotalTab(QWidget):
         if self._sections.get(title) is not None:
             self._sections[title] = total
             print("{} = {}".format(title, total))
+
+        self._set_table()
+
+    def _set_table(self) -> None:
+        """
+        Remove any items from the layout that were already there. Then recreate the entire table and
+        add in the plus and minus buttons at the end of the layout.
+        :return: None
+        """
+        self._table.setRowCount(0)
+
+        for key, value in self._sections.items():
+            self._table.setRowCount(self._table.rowCount() + 1)
+
+            title_item = QTableWidgetItem(key)
+            title_item.setFlags(title_item.flags() & ~Qt.ItemIsEditable);
+            self._table.setItem(self._table.rowCount() - 1, 0, title_item)
+
+            amount_item = QTableWidgetItem(str(value))
+            amount_item.setTextAlignment(Qt.AlignRight)
+            self._table.setItem(self._table.rowCount() - 1, 1, amount_item)
+
+        self._table.move(0,0)
+        self._table.resizeColumnsToContents()
+        self._resize_columns()
+
+    def _resize_columns(self) -> None:
+        """
+        resize the columns to match after we have determined which of the columns is the widest.
+        Luckily, this will scale no matter how many columns we add
+        :return: None
+        """
+        max_column_width = 0
+
+        for i in range(self._table.columnCount()):
+            max_column_width = self._table.columnWidth(i) if self._table.columnWidth(i) > max_column_width else max_column_width
+
+        for i in range(self._table.columnCount()):
+            self._table.setColumnWidth(i, max_column_width)
 
 
 class SectionWidget(QWidget):
