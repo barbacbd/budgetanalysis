@@ -1,0 +1,19 @@
+#!/usr/bin/python3.6
+
+from PyQt5.QtWidgets import QApplication
+from budget_analysis.ui import MainWindow
+import sys
+import qdarkstyle
+
+
+dark_stylesheet = qdarkstyle.load_stylesheet_pyqt5()
+
+app = QApplication(sys.argv)
+app.setStyleSheet(dark_stylesheet)
+
+main_window = MainWindow()
+main_window.setMinimumSize(800, 400)
+main_window.setWindowTitle('Budget Analysis')
+main_window.show()
+
+sys.exit(app.exec_())
