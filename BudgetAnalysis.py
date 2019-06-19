@@ -64,6 +64,8 @@ class TotalTab(QWidget):
         if self._sections.get(title) is None:
             self._sections[title] = 0.0
 
+        self._set_table()
+
     def update(self, title: str, total: float) -> None:
         """
         Update the total value for this section if it exists
@@ -73,7 +75,6 @@ class TotalTab(QWidget):
         """
         if self._sections.get(title) is not None:
             self._sections[title] = total
-            print("{} = {}".format(title, total))
 
         self._set_table()
 
@@ -85,18 +86,33 @@ class TotalTab(QWidget):
         """
         self._table.setRowCount(0)
 
+        total = 0.0
+
         for key, value in self._sections.items():
             self._table.setRowCount(self._table.rowCount() + 1)
 
             title_item = QTableWidgetItem(key)
-            title_item.setFlags(title_item.flags() & ~Qt.ItemIsEditable);
+            title_item.setFlags(title_item.flags() & ~Qt.ItemIsEditable)
             self._table.setItem(self._table.rowCount() - 1, 0, title_item)
 
             amount_item = QTableWidgetItem(str(value))
             amount_item.setTextAlignment(Qt.AlignRight)
+            amount_item.setFlags(title_item.flags() & ~Qt.ItemIsEditable)
             self._table.setItem(self._table.rowCount() - 1, 1, amount_item)
 
-        self._table.move(0,0)
+            total = total + value
+
+        """ Add in a total of all totals value """
+        self._table.setRowCount(self._table.rowCount() + 1)
+        total_item = QTableWidgetItem("Monthly Savings")
+        total_item.setFlags(total_item.flags() & ~Qt.ItemIsEditable)
+        self._table.setItem(self._table.rowCount() - 1, 0, total_item)
+        total_amount_item = QTableWidgetItem(str(total))
+        total_amount_item.setTextAlignment(Qt.AlignRight)
+        total_amount_item.setFlags(total_amount_item.flags() & ~Qt.ItemIsEditable)
+        self._table.setItem(self._table.rowCount() - 1, 1, total_amount_item)
+
+        self._table.move(0, 0)
         self._table.resizeColumnsToContents()
         self._resize_columns()
 
@@ -192,7 +208,7 @@ class SectionWidget(QWidget):
         for i in range(self._table.rowCount()):
             total += float(self._table.item(i, 1).text()) if self._table.item(i, 1) else 0.0
 
-        self.total.total = total
+        self.total.total = total if self._state == POSITIVE else -total
         self.total.total_changed.emit(self.title, self.total.total)
 
     def _set_table(self) -> None:
