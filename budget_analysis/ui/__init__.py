@@ -8,7 +8,9 @@ class MainWindow(QMainWindow):
 
     def __init__(self) -> None:
         """
-
+        Create the tabs and add them to the tab widet. These will consist of the default values,
+        and the user can add in whatever other values that they wish too enter while the application
+        is running.
         """
         super().__init__()
 
@@ -116,10 +118,11 @@ class MainWindow(QMainWindow):
 
     def update(self, title: str, total: float) -> None:
         """
-
-        :param title:
-        :param total:
-        :return:
+        A connected function when the total of one of the tabs changes this function will
+        be hit, and the totals tab will be updated
+        :param title: name of the tab that should be updated
+        :param total: the new total amount
+        :return: None
         """
         if self._total_tab is not None:
             self._total_tab.update(title, total)
