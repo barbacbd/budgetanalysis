@@ -1,5 +1,6 @@
 from PyQt5.QtCore import pyqtSlot, QObject, Qt, pyqtSignal
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QWidget, QSizePolicy, QHBoxLayout, QPushButton
+from PyQt5.QtGui import QColor
 from .SectionType import SectionType
 from .TableItem import TableItem
 
@@ -31,6 +32,8 @@ class TotalTab(QWidget):
         self._table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         layout.addWidget(self._table)
+
+        self._original_background = None
 
         """ Create the table and fill in all of the data including the custom and default values """
         self._set_table()
@@ -85,6 +88,9 @@ class TotalTab(QWidget):
 
             total = total + value
 
+        if self._original_background is None and self._table.rowCount() > 0:
+            self._original_background = self._table.item(0,0).background()
+
         """ Add in a total of all totals value """
         self._table.setRowCount(self._table.rowCount() + 1)
         total_item = QTableWidgetItem("Monthly Savings")
@@ -94,6 +100,20 @@ class TotalTab(QWidget):
         total_amount_item.setTextAlignment(Qt.AlignRight)
         total_amount_item.setFlags(total_amount_item.flags() & ~Qt.ItemIsEditable)
         self._table.setItem(self._table.rowCount() - 1, 1, total_amount_item)
+
+        for row in range(self._table.rowCount()):
+
+            total = float(self._table.item(row, 1).text())
+
+            for col in range(self._table.columnCount()):
+
+                if total > 0:
+                    self._table.item(row, col).setBackground(QColor(63, 178, 90))
+                elif total < 0:
+                    self._table.item(row, col).setBackground(QColor(253, 68, 86))
+                else:
+                    if self._original_background is not None:
+                        self._table.item(row, col).setBackground(self._original_background)
 
         self._table.move(0, 0)
         self._table.resizeColumnsToContents()
